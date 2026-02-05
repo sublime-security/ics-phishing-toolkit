@@ -1,0 +1,9 @@
+# Development and linting tools
+ruff>=0.14.6
+mypy>=1.18.2
+pre-commit>=4.3.0
+types-requests>=2.32.4
+responses>=0.25.0
+
+# Include production dependencies
+-r requirements.txt
