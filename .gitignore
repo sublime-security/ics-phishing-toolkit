@@ -1,0 +1,22 @@
+# Temporary files
+tmp/
+*.WIP.*
+settings.local.json
+
+# Python
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.virtualenv/
+
+# IDE
+.vscode/
+.idea/
+
+# Pre-commit
+.pre-commit-cache/
+
+# personal files for any agents (e.g., prompts and plans)
+.agents/
