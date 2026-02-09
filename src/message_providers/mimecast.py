@@ -342,15 +342,13 @@ class MimecastFetcher(MessageFetcher):
             incident_code = incident.get("code", "unknown")
             search_criteria = incident.get("searchCriteria", {})
 
-            message_ids = []
-            if "messageId" in search_criteria and search_criteria["messageId"]:
-                message_ids.append(search_criteria["messageId"])
+            unique_message_ids = set()
+            if search_criteria.get("messageId"):
+                unique_message_ids.add(search_criteria["messageId"])
             if "messageIds" in search_criteria:
                 ids_list = search_criteria["messageIds"]
                 if isinstance(ids_list, list):
-                    message_ids.extend(ids_list)
-
-            unique_message_ids = set(message_ids)
+                    unique_message_ids.update(ids_list)
 
             if not unique_message_ids:
                 logger.warning(
