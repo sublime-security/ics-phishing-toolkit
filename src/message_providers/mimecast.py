@@ -342,28 +342,37 @@ class MimecastFetcher(MessageFetcher):
             incident_code = incident.get("code", "unknown")
             search_criteria = incident.get("searchCriteria", {})
 
-            message_id = search_criteria.get("messageId")
-            recipient = search_criteria.get("to")
+            unique_message_ids = set()
+            if search_criteria.get("messageId"):
+                unique_message_ids.add(search_criteria["messageId"])
+            if "messageIds" in search_criteria:
+                ids_list = search_criteria["messageIds"]
+                if isinstance(ids_list, list):
+                    unique_message_ids.update(ids_list)
 
-            if not message_id:
-                logger.warning(f"Skipping incident {incident_code}: no messageId in searchCriteria")
+            if not unique_message_ids:
+                logger.warning(
+                    f"Skipping incident {incident_code}: no messageId or messageIds in searchCriteria"
+                )
                 continue
 
+            recipient = search_criteria.get("to")
             if not recipient:
                 logger.warning(f"Skipping incident {incident_code}: no recipient in searchCriteria")
                 continue
 
-            archive_id = self._search_archive_for_message(message_id, start_time, end_time)
-            if not archive_id:
-                logger.warning(
-                    f"Failed to find message {message_id} in archive for incident {incident_code}"
-                )
-                continue
+            for message_id in unique_message_ids:
+                archive_id = self._search_archive_for_message(message_id, start_time, end_time)
+                if not archive_id:
+                    logger.warning(
+                        f"Failed to find message {message_id} in archive for incident {incident_code}"
+                    )
+                    continue
 
-            raw_message = self._get_raw_message(archive_id, recipient)
-            if raw_message:
-                yield Message(user_id=recipient, raw=raw_message)
-            else:
-                logger.warning(
-                    f"Failed to download message {archive_id} for incident {incident_code}"
-                )
+                raw_message = self._get_raw_message(archive_id, recipient)
+                if raw_message:
+                    yield Message(user_id=recipient, raw=raw_message)
+                else:
+                    logger.warning(
+                        f"Failed to download message {archive_id} for incident {incident_code}"
+                    )

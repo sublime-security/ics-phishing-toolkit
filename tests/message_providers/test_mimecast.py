@@ -888,6 +888,204 @@ class TestMimecastFetcher(unittest.TestCase):
             self.assertIn('"type": "RFC822"', request_body)
             self.assertIn('"context": "RECEIVED"', request_body)
 
+    @responses.activate
+    def test_yield_emails_with_messageIds_array(self):
+        """Test processing incidents with messageIds (plural) as an array."""
+        creds = self.get_mock_credentials()
+        self.mock_oauth_token()
+        base_url = API_BASE_URLS["global"]
+
+        responses.post(
+            f"{base_url}/api/ttp/remediation/find-incidents",
+            json={
+                "data": [
+                    {
+                        "incidents": [
+                            {
+                                "code": "TR-001",
+                                "type": "automatic",
+                                "searchCriteria": {
+                                    "messageIds": ["<msg1@example.com>", "<msg2@example.com>"],
+                                    "to": "user1@example.com",
+                                },
+                            }
+                        ]
+                    }
+                ]
+            },
+            status=200,
+        )
+
+        responses.post(
+            f"{base_url}/api/message-finder/search",
+            json=self.get_mock_archive_search_response("arch1"),
+            status=200,
+        )
+
+        responses.post(
+            f"{base_url}/api/message-finder/search",
+            json=self.get_mock_archive_search_response("arch2"),
+            status=200,
+        )
+
+        presigned_url1 = "https://example.mimecast.com/download/msg1"
+        responses.post(
+            f"{base_url}/api/archive/get-message-part",
+            json={"data": [{"url": presigned_url1}]},
+            status=200,
+        )
+        responses.get(presigned_url1, body="Email 1 content", status=200)
+
+        presigned_url2 = "https://example.mimecast.com/download/msg2"
+        responses.post(
+            f"{base_url}/api/archive/get-message-part",
+            json={"data": [{"url": presigned_url2}]},
+            status=200,
+        )
+        responses.get(presigned_url2, body="Email 2 content", status=200)
+
+        fetcher = MimecastFetcher(**creds)
+        messages = list(fetcher.yield_remediated_emails())
+
+        self.assertEqual(len(messages), 2)
+        self.assertEqual(messages[0].user_id, "user1@example.com")
+        self.assertEqual(messages[1].user_id, "user1@example.com")
+        self.assertIn("Email 1 content", messages[0].raw)
+        self.assertIn("Email 2 content", messages[1].raw)
+
+    @responses.activate
+    def test_yield_emails_with_both_messageId_and_messageIds(self):
+        creds = self.get_mock_credentials()
+        self.mock_oauth_token()
+        base_url = API_BASE_URLS["global"]
+
+        # incident with both messageId and messageIds (with one duplicate)
+        responses.post(
+            f"{base_url}/api/ttp/remediation/find-incidents",
+            json={
+                "data": [
+                    {
+                        "incidents": [
+                            {
+                                "code": "TR-001",
+                                "type": "automatic",
+                                "searchCriteria": {
+                                    "messageId": "<msg1@example.com>",
+                                    "messageIds": [
+                                        "<msg1@example.com>",
+                                        "<msg2@example.com>",
+                                    ],
+                                    "to": "user1@example.com",
+                                },
+                            }
+                        ]
+                    }
+                ]
+            },
+            status=200,
+        )
+
+        responses.post(
+            f"{base_url}/api/message-finder/search",
+            json=self.get_mock_archive_search_response("arch1"),
+            status=200,
+        )
+
+        responses.post(
+            f"{base_url}/api/message-finder/search",
+            json=self.get_mock_archive_search_response("arch2"),
+            status=200,
+        )
+
+        presigned_url1 = "https://example.mimecast.com/download/msg1"
+        responses.post(
+            f"{base_url}/api/archive/get-message-part",
+            json={"data": [{"url": presigned_url1}]},
+            status=200,
+        )
+        responses.get(presigned_url1, body="Email 1 content", status=200)
+
+        presigned_url2 = "https://example.mimecast.com/download/msg2"
+        responses.post(
+            f"{base_url}/api/archive/get-message-part",
+            json={"data": [{"url": presigned_url2}]},
+            status=200,
+        )
+        responses.get(presigned_url2, body="Email 2 content", status=200)
+
+        fetcher = MimecastFetcher(**creds)
+        messages = list(fetcher.yield_remediated_emails())
+
+        # should yield 2 messages (deduped)
+        self.assertEqual(len(messages), 2)
+        self.assertIn("Email 1 content", messages[0].raw)
+        self.assertIn("Email 2 content", messages[1].raw)
+
+    @responses.activate
+    def test_skip_incident_with_neither_messageId_nor_messageIds(self):
+        creds = self.get_mock_credentials()
+        self.mock_oauth_token()
+
+        responses.post(
+            f"{API_BASE_URLS['global']}/api/ttp/remediation/find-incidents",
+            json={
+                "data": [
+                    {
+                        "incidents": [
+                            {
+                                "code": "TR-001",
+                                "type": "automatic",
+                                "searchCriteria": {
+                                    "to": "user1@example.com",
+                                },
+                            }
+                        ]
+                    }
+                ]
+            },
+            status=200,
+        )
+
+        fetcher = MimecastFetcher(**creds)
+        messages = list(fetcher.yield_remediated_emails())
+
+        self.assertEqual(len(messages), 0)
+
+    @responses.activate
+    def test_messageId_and_messageIds_empty(self):
+        creds = self.get_mock_credentials()
+        self.mock_oauth_token()
+        base_url = API_BASE_URLS["global"]
+
+        responses.post(
+            f"{base_url}/api/ttp/remediation/find-incidents",
+            json={
+                "data": [
+                    {
+                        "incidents": [
+                            {
+                                "code": "TR-001",
+                                "type": "automatic",
+                                "searchCriteria": {
+                                    "messageId": "",
+                                    "messageIds": None,
+                                    "to": "user1@example.com",
+                                },
+                            }
+                        ]
+                    }
+                ]
+            },
+            status=200,
+        )
+
+        fetcher = MimecastFetcher(**creds)
+        messages = list(fetcher.yield_remediated_emails())
+
+        self.assertEqual(len(messages), 0)
+
+        self.assertEqual(2, len(responses.calls))
+
 
 if __name__ == "__main__":
     unittest.main()
