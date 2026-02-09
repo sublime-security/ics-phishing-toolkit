@@ -1,4 +1,4 @@
-# ics-phishing
+# ics-phishing-toolkit
 
 Open source tooling to automatically remove malicious calendar events when email security solutions quarantine
 [ICS phishing](https://sublime.security/blog/ics-phishing-stopping-a-surge-of-malicious-calendar-invites/) attacks.
@@ -153,6 +153,9 @@ export MICROSOFT_TENANT_ID="your-tenant-id"
 ### Example: Proofpoint + Microsoft 365
 
 ```bash
+export ICS_PHISHING_REMEDIATION_MODE="dry_run" # "dry_run" is default
+export MESSAGE_LOOKBACK_MINUTES=10
+
 export PROOFPOINT_CLIENT_ID="your-client-id"
 export PROOFPOINT_CLIENT_SECRET="your-secret"
 export MICROSOFT_TENANT_ID="your-tenant"
@@ -245,7 +248,7 @@ class EventDeleter:
         invitation: CalendarInvitation,
         mode: Mode,
         on_event_found_callback: Optional[Callable[[CalendarInvitation, CalendarEvent], None]]
-  ) -> None:
+    ) -> None:
         """Delete calendar events matching the ICS attachment"""
 ```
 
