@@ -1,7 +1,10 @@
 # ics-phishing-toolkit
 
-Open source tooling to automatically remove malicious calendar events when email security solutions quarantine
-[ICS phishing](https://sublime.security/blog/ics-phishing-stopping-a-surge-of-malicious-calendar-invites/) attacks.
+This toolkit for remediating malicious calendar invites is designed to help teams using email security solutions that
+don't natively remediate these attacks.
+
+If you're using Sublime, you don't need this toolkit
+because [remediation is natively supported](https://sublime.security/attack-types/ics-phishing/).
 
 ## Supported stacks
 
@@ -42,16 +45,14 @@ do not clean up malicious calendar events as of February 2026.
 
 ## Stopping ICS phishing
 
-These Python scripts automatically delete malicious calendar events when your email security solution quarantines ICS
-phishing emails. The scripts:
+Based on [Sublime's built-in remediation](https://sublime.security/attack-types/ics-phishing/) of malicious calendar
+events, these Python scripts delete malicious events when your email security solution quarantines ICS phishing emails.
+The scripts:
 
 - Fetch quarantined messages from your email security provider
 - Extract `.ics` calendar attachments and other [iCalendar](https://en.wikipedia.org/wiki/ICalendar)-compliant
   attachments from those messages
 - Find and delete matching events from users' calendars (Microsoft 365 or Google Workspace)
-
-These scripts are based on [Sublime's built-in remediation](https://sublime.security/attack-types/ics-phishing/) of
-malicious calendar events.
 
 ### SOARs
 
