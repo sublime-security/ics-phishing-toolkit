@@ -46,8 +46,8 @@ do not clean up malicious calendar events as of February 2026.
 ## Stopping ICS phishing
 
 Based on [Sublime's built-in remediation](https://sublime.security/attack-types/ics-phishing/) of malicious calendar
-events, these Python scripts automatically delete malicious events when your email security solution quarantines ICS
-phishing emails. The scripts:
+events, these Python scripts delete malicious events when your email security solution quarantines ICS phishing emails.
+The scripts:
 
 - Fetch quarantined messages from your email security provider
 - Extract `.ics` calendar attachments and other [iCalendar](https://en.wikipedia.org/wiki/ICalendar)-compliant
