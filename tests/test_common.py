@@ -57,6 +57,42 @@ class TestCommon(unittest.TestCase):
             self.assertEqual(TEST_EML_ICALENDAR_UIDS[i], invitation.ics_uid)
             self.assertIsNotNone(invitation.raw_attachment)
 
+    def _message_with_ics(self, ics: str) -> Message:
+        raw = (
+            "From: sender@example.com\n"
+            "To: test@example.com\n"
+            "Subject: Invite\n"
+            "MIME-Version: 1.0\n"
+            "Content-Type: text/calendar; method=REQUEST\n"
+            "\n" + ics
+        )
+        return Message(user_id="test@example.com", raw=raw)
+
+    def test_extract_calendar_invitations_ignores_uid_text_inside_other_properties(self):
+        ics = (
+            "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\n"
+            "DESCRIPTION:Call support. Ref UID:not-a-uid\r\n"
+            "X-ALT-DESC;FMTTYPE=text/html:<p>UID:also-not</p>\r\n"
+            "UID:real-uid\r\n"
+            "END:VEVENT\r\nEND:VCALENDAR\r\n"
+        )
+
+        invitations = extract_calendar_invitations(self._message_with_ics(ics))
+
+        self.assertEqual(["real-uid"], [i.ics_uid for i in invitations])
+
+    def test_extract_calendar_invitations_reads_uid_case_insensitively_and_with_params(self):
+        ics = (
+            "BEGIN:VCALENDAR\r\n"
+            "BEGIN:VEVENT\r\nuid:lowercase-uid\r\nEND:VEVENT\r\n"
+            'BEGIN:VEVENT\r\nUID;X-NOTE="a:b":param-uid\r\nEND:VEVENT\r\n'
+            "END:VCALENDAR\r\n"
+        )
+
+        invitations = extract_calendar_invitations(self._message_with_ics(ics))
+
+        self.assertEqual(["lowercase-uid", "param-uid"], [i.ics_uid for i in invitations])
+
     def test_extract_calendar_invitations_empty_message(self):
         message = Message(user_id="test@example.com", raw="Subject: Test\n\nNo attachments here.")
 

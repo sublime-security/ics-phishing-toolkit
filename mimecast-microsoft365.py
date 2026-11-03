@@ -19,6 +19,9 @@ MICROSOFT_CLIENT_ID_ENV_VAR = "MICROSOFT_CLIENT_ID"
 MICROSOFT_CLIENT_SECRET_ENV_VAR = "MICROSOFT_CLIENT_SECRET"
 MICROSOFT_TENANT_ID_ENV_VAR = "MICROSOFT_TENANT_ID"
 MODE_ENV_VAR = "ICS_PHISHING_REMEDIATION_MODE"
+UID_LINE_RE = re.compile(
+    '^UID(?:;(?:"[^"\\r\\n]*"|[^":\\r\\n])*)?:([^\\r\\n]*)\\r?$', re.IGNORECASE | re.MULTILINE
+)
 
 OAUTH_TOKEN_URLS = {
     "global": "https://api.services.mimecast.com/oauth/token",
@@ -542,8 +545,10 @@ def extract_calendar_invitations(message: Message) -> list[CalendarInvitation]:
         raw_attachment = ics_content
         try:
             ics_content_unfolded = re.sub("\\r?\\n[\\t ]", "", ics_content)
-            uid_matches = re.findall("UID:([^\\r\\n]+)", ics_content_unfolded)
+            uid_matches = UID_LINE_RE.findall(ics_content_unfolded)
             for uid in uid_matches:
+                if not uid:
+                    continue
                 invitation_key = (message.user_id, uid)
                 if invitation_key not in unique_invitations:
                     unique_invitations[invitation_key] = CalendarInvitation(
