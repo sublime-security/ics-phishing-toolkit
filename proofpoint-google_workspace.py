@@ -20,6 +20,9 @@ GOOGLE_SERVICE_ACCOUNT_FILE_ENV_VAR = "GOOGLE_SERVICE_ACCOUNT_FILE"
 GOOGLE_SERVICE_ACCOUNT_JSON_ENV_VAR = "GOOGLE_SERVICE_ACCOUNT_JSON"
 GOOGLE_ACCESS_TOKEN_ENV_VAR = "GOOGLE_ACCESS_TOKEN"
 MODE_ENV_VAR = "ICS_PHISHING_REMEDIATION_MODE"
+UID_LINE_RE = re.compile(
+    '^UID(?:;(?:"[^"\\r\\n]*"|[^":\\r\\n])*)?:([^\\r\\n]*)\\r?$', re.IGNORECASE | re.MULTILINE
+)
 
 TOKEN_BASE_URL = "https://auth.proofpoint.com/v1/token"
 API_BASE_URL = "https://threatprotection-api.proofpoint.com"
@@ -526,8 +529,10 @@ def extract_calendar_invitations(message: Message) -> list[CalendarInvitation]:
         raw_attachment = ics_content
         try:
             ics_content_unfolded = re.sub("\\r?\\n[\\t ]", "", ics_content)
-            uid_matches = re.findall("UID:([^\\r\\n]+)", ics_content_unfolded)
+            uid_matches = UID_LINE_RE.findall(ics_content_unfolded)
             for uid in uid_matches:
+                if not uid:
+                    continue
                 invitation_key = (message.user_id, uid)
                 if invitation_key not in unique_invitations:
                     unique_invitations[invitation_key] = CalendarInvitation(

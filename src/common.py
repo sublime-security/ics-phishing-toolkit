@@ -22,6 +22,13 @@ assert get_args(Mode) == VALID_MODES
 
 MODE_ENV_VAR = "ICS_PHISHING_REMEDIATION_MODE"
 
+# A UID content line (RFC 5545 3.1, 3.8.4.7), matched on unfolded content: it must start the
+# line, the property name is case-insensitive, and it may carry parameters, whose quoted values
+# can contain ":". Text like "UID:" inside DESCRIPTION is not a UID.
+UID_LINE_RE = re.compile(
+    r'^UID(?:;(?:"[^"\r\n]*"|[^":\r\n])*)?:([^\r\n]*)\r?$', re.IGNORECASE | re.MULTILINE
+)
+
 
 @dataclass
 class Message:
@@ -117,9 +124,11 @@ def extract_calendar_invitations(message: Message) -> list[CalendarInvitation]:
             # are continuations of the previous line
             ics_content_unfolded = re.sub(r"\r?\n[\t ]", "", ics_content)
 
-            uid_matches = re.findall(r"UID:([^\r\n]+)", ics_content_unfolded)
+            uid_matches = UID_LINE_RE.findall(ics_content_unfolded)
 
             for uid in uid_matches:
+                if not uid:
+                    continue
                 invitation_key = (message.user_id, uid)
                 # TODO: in the case of duplicates, include all attachments for a give user/UID pair
                 #       on CalendarInvitation (e.g., plural CalendarInvitation.raw_attachments)
